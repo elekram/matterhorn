@@ -1,0 +1,17 @@
+services:
+  web:
+    env_file:
+      - path: ./config/config.env
+      # dns:
+      #   - 10.177.80.130 #example: 8.8.8.8
+    build:
+      context: ./
+      # Correct the path to your Dockerfile
+      dockerfile: dockerfile
+    # [hostport:containerport] hostport is how the external network connects to your app.
+    # container port is for apps inside the container to cnnect to each other.
+    ports:
+      - 8000:8000
+    # Important to bind/mount your codebase dir to /app dir for live reload
+    volumes:
+      - ./:/app

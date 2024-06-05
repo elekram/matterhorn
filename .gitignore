@@ -1,0 +1,11 @@
+# environment files
+*.env
+
+# configuration directory
+
+# secrets
+/cert
+
+# air temp filder
+/tmp
+
