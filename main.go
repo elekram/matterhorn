@@ -8,7 +8,7 @@ import (
 )
 
 func home(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("<b>Wassssup Neegs?<b>"))
+	w.Write([]byte("<b>Wassssup my dude?<b>"))
 }
 
 func main() {
@@ -19,6 +19,10 @@ func main() {
 	mux.HandleFunc("GET /", home)
 
 	log.Printf("Starting server on port %s", config.Port)
-	err := http.ListenAndServe(":"+config.Port, mux)
+	err := http.ListenAndServeTLS(":"+config.Port,
+		"./cert/8b9f9ffcb19fa503.crt",
+		"./cert/_.cheltsec.vic.edu.au.key",
+		mux,
+	)
 	log.Fatal(err)
 }

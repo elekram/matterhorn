@@ -19,7 +19,7 @@ type Config struct {
 func NewConfig() *Config {
 	config := Config{
 		AppName: getEnv("APPNAME", "NoName"),
-		Port:    getEnv("PORT", "1000"),
+		Port:    getEnv("PORT", "8443"),
 	}
 
 	return &config
