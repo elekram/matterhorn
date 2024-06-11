@@ -43,13 +43,9 @@ func main() {
 		Certificates: []tls.Certificate{serverTLSKeys},
 	}
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /v1/healthcheck", app.status)
-	mux.HandleFunc("/", home)
-
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%s", config.Port),
-		Handler:      mux,
+		Handler:      app.router(),
 		IdleTimeout:  time.Minute,
 		TLSConfig:    tlsConfig,
 		ReadTimeout:  10 * time.Second,
@@ -60,11 +56,4 @@ func main() {
 
 	log.Printf("Starting server on port %s", config.Port)
 	log.Fatal(srv.ListenAndServeTLS("", ""))
-
-	// err := http.ListenAndServeTLS(":"+config.Port,
-	// 	config.TLSPublicKey,
-	// 	config.TLSPrivateKey,
-	// 	mux,
-	// )
-	log.Fatal(err)
 }
