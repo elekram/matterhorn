@@ -11,18 +11,55 @@ import (
 	environment "github.com/elekram/matterhorn/config"
 )
 
+type Middleware func(http.HandlerFunc) http.HandlerFunc
+
+func (app *application) use(handler http.HandlerFunc, m ...Middleware) http.HandlerFunc {
+
+	if len(m) < 1 {
+		return handler
+	}
+
+	wrappedHandler := handler
+
+	for i := len(m) - 1; i >= 0; i-- {
+		wrappedHandler = m[i](wrappedHandler)
+	}
+	return wrappedHandler
+}
+
 func home(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("<b>Wassssup my dude?<b>"))
 }
 
+func LogMiddleware(h http.HandlerFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		log.SetOutput(os.Stdout) // logs go to Stderr by default
+		log.Println(r.Method, r.URL)
+		h.ServeHTTP(w, r) // call ServeHTTP on the original handler
+
+	})
+}
+
 type application struct {
-	config environment.Config
-	logger *log.Logger
+	config     environment.Config
+	logger     *log.Logger
+	middleware []Middleware
 }
 
 func (app *application) status(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "application:", app.config.AppName)
 	fmt.Fprintln(w, "status: online")
+}
+
+func test(h http.HandlerFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("hello from test() middleware")
+	})
+}
+
+func (app *application) handler(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("<b>Wassssup my dude?<b>"))
 }
 
 func main() {
@@ -32,6 +69,9 @@ func main() {
 	app := &application{
 		config: *config,
 		logger: logger,
+		middleware: []Middleware{
+			LogMiddleware,
+		},
 	}
 
 	serverTLSKeys, err := tls.LoadX509KeyPair(config.TLSPublicKey, config.TLSPrivateKey)
