@@ -11,35 +11,9 @@ import (
 	environment "github.com/elekram/matterhorn/config"
 )
 
-type Middleware func(http.HandlerFunc) http.HandlerFunc
-
-func (app *application) use(handler http.HandlerFunc, m ...Middleware) http.HandlerFunc {
-
-	if len(m) < 1 {
-		return handler
-	}
-
-	wrappedHandler := handler
-
-	for i := len(m) - 1; i >= 0; i-- {
-		wrappedHandler = m[i](wrappedHandler)
-	}
-	return wrappedHandler
-}
-
-func home(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("<b>Wassssup my dude?<b>"))
-}
-
-func LogMiddleware(h http.HandlerFunc) http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-		log.SetOutput(os.Stdout) // logs go to Stderr by default
-		log.Println(r.Method, r.URL)
-		h.ServeHTTP(w, r) // call ServeHTTP on the original handler
-
-	})
-}
+// func home(w http.ResponseWriter, r *http.Request) {
+// 	w.Write([]byte("<b>Wassssup my dude?<b>"))
+// }
 
 type application struct {
 	config     environment.Config
@@ -52,15 +26,9 @@ func (app *application) status(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "status: online")
 }
 
-func test(h http.HandlerFunc) http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("hello from test() middleware")
-	})
-}
-
-func (app *application) handler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("<b>Wassssup my dude?<b>"))
-}
+// func (app *application) handler(w http.ResponseWriter, r *http.Request) {
+// 	w.Write([]byte("<b>Wassssup my dude?<b>"))
+// }
 
 func main() {
 	config := environment.NewConfig()
@@ -70,7 +38,8 @@ func main() {
 		config: *config,
 		logger: logger,
 		middleware: []Middleware{
-			LogMiddleware,
+			requestLogger,
+			secureHeaders,
 		},
 	}
 
@@ -94,6 +63,6 @@ func main() {
 
 	defer srv.Close()
 
-	log.Printf("Starting server on port %s", config.Port)
+	log.Printf("Serving on port %s 💁🏻", config.Port)
 	log.Fatal(srv.ListenAndServeTLS("", ""))
 }
