@@ -8,13 +8,12 @@ import (
 
 type Middleware func(http.HandlerFunc) http.HandlerFunc
 
-func (app *application) use(handler http.HandlerFunc, m ...Middleware) http.HandlerFunc {
-
+func (app *application) use(h http.HandlerFunc, m ...Middleware) http.HandlerFunc {
 	if len(m) < 1 {
-		return handler
+		return h
 	}
 
-	wrappedHandler := handler
+	wrappedHandler := h
 
 	// ensures middleware runs in order as per ...Middleware slice
 	for i := len(m) - 1; i >= 0; i-- {
