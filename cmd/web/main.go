@@ -40,6 +40,7 @@ func main() {
 		middleware: []Middleware{
 			requestLogger,
 			secureHeaders,
+			disableCache,
 		},
 	}
 
