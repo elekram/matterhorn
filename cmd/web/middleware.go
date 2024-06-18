@@ -16,6 +16,7 @@ func (app *application) use(handler http.HandlerFunc, m ...Middleware) http.Hand
 
 	wrappedHandler := handler
 
+	// ensures middleware runs in order as per ...Middleware slice
 	for i := len(m) - 1; i >= 0; i-- {
 		wrappedHandler = m[i](wrappedHandler)
 	}
