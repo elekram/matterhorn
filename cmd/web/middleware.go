@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-type Middleware func(http.HandlerFunc) http.HandlerFunc
+type Middleware func(http.Handler) http.HandlerFunc
 
 func (app *application) use(h http.HandlerFunc, m ...Middleware) http.HandlerFunc {
 	if len(m) < 1 {
@@ -22,7 +22,7 @@ func (app *application) use(h http.HandlerFunc, m ...Middleware) http.HandlerFun
 	return wrappedHandler
 }
 
-func disableCache(next http.HandlerFunc) http.HandlerFunc {
+func disableCache(next http.Handler) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "private, no-cache, no-store, must-revalidate, proxy-revalidate")
 		w.Header().Set("Expires", "0")
@@ -32,7 +32,7 @@ func disableCache(next http.HandlerFunc) http.HandlerFunc {
 	})
 }
 
-func secureHeaders(next http.HandlerFunc) http.HandlerFunc {
+func secureHeaders(next http.Handler) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-XSS-Protection", "1; mode=block")
 		w.Header().Set("X-Frame-Options", "SAMEORIGIN")
@@ -46,11 +46,18 @@ func secureHeaders(next http.HandlerFunc) http.HandlerFunc {
 	})
 }
 
-func requestLogger(next http.HandlerFunc) http.HandlerFunc {
+func requestLogger(next http.Handler) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.SetOutput(os.Stdout) // logs go to Stderr by default
 		log.Println(r.Method, r.URL)
 		println("logmiddleware ran")
+		if r.URL.Path == "/foo" {
+			// fmt.Fprintln(w, "Kill sessions")
+			// fmt.Fprintln(w, "status: offline")
+			w.Write([]byte("<b>Wassssup my dude?<b>"))
+			return
+		}
+
 		next.ServeHTTP(w, r) // call ServeHTTP on the original handler
 	})
 }
