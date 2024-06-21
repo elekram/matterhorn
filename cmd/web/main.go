@@ -37,11 +37,13 @@ func main() {
 	app := &application{
 		config: *config,
 		logger: logger,
-		middleware: []Middleware{
-			requestLogger,
-			secureHeaders,
-			disableCache,
-		},
+	}
+
+	app.middleware = []Middleware{
+		requestLogger,
+		secureHeaders,
+		disableCache,
+		app.session,
 	}
 
 	serverTLSKeys, err := tls.LoadX509KeyPair(config.TLSPublicKey, config.TLSPrivateKey)
