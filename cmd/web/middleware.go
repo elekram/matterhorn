@@ -6,22 +6,6 @@ import (
 	"os"
 )
 
-type Middleware func(http.Handler) http.HandlerFunc
-
-func (app *application) use(h http.HandlerFunc, m ...Middleware) http.HandlerFunc {
-	if len(m) < 1 {
-		return h
-	}
-
-	wrappedHandler := h
-
-	// ensures middleware runs in order as per ...Middleware slice
-	for i := len(m) - 1; i >= 0; i-- {
-		wrappedHandler = m[i](wrappedHandler)
-	}
-	return wrappedHandler
-}
-
 func disableCache(next http.Handler) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "private, no-cache, no-store, must-revalidate, proxy-revalidate")

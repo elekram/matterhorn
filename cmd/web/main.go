@@ -11,24 +11,16 @@ import (
 	environment "github.com/elekram/matterhorn/config"
 )
 
-// func home(w http.ResponseWriter, r *http.Request) {
-// 	w.Write([]byte("<b>Wassssup my dude?<b>"))
-// }
-
 type application struct {
-	config     environment.Config
-	logger     *log.Logger
-	middleware []Middleware
+	config environment.Config
+	logger *log.Logger
 }
 
 func (app *application) status(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "application:", app.config.AppName)
 	fmt.Fprintln(w, "status: online")
+	println("status ran")
 }
-
-// func (app *application) handler(w http.ResponseWriter, r *http.Request) {
-// 	w.Write([]byte("<b>Wassssup my dude?<b>"))
-// }
 
 func main() {
 	config := environment.NewConfig()
@@ -37,13 +29,6 @@ func main() {
 	app := &application{
 		config: *config,
 		logger: logger,
-	}
-
-	app.middleware = []Middleware{
-		requestLogger,
-		secureHeaders,
-		disableCache,
-		app.session,
 	}
 
 	serverTLSKeys, err := tls.LoadX509KeyPair(config.TLSPublicKey, config.TLSPrivateKey)
@@ -55,9 +40,11 @@ func main() {
 		Certificates: []tls.Certificate{serverTLSKeys},
 	}
 
+	middlewareWrappedMux := requestLogger(secureHeaders(disableCache(app.router())))
+
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%s", config.Port),
-		Handler:      app.router(),
+		Handler:      middlewareWrappedMux,
 		IdleTimeout:  time.Minute,
 		TLSConfig:    tlsConfig,
 		ReadTimeout:  10 * time.Second,
