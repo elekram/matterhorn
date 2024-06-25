@@ -1,14 +1,21 @@
 package main
 
 import (
+	"embed"
 	"net/http"
 )
 
-func (app *application) router() http.Handler {
+//go:embed static/*
+var content embed.FS
 
-	router := http.NewServeMux()
-	router.HandleFunc("GET /v1/status", app.use(app.status, app.middleware...))
-	router.HandleFunc("GET /", app.use(app.status, app.middleware...))
+func (app *application) router() *http.ServeMux {
+	mux := http.NewServeMux()
 
-	return router
+	mux.HandleFunc("GET /v1/status", app.status)
+	mux.HandleFunc("GET /", app.status)
+
+	mux.Handle("GET /static/", http.StripPrefix(
+		"/", http.FileServer(http.FS(content))))
+
+	return mux
 }
