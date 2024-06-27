@@ -64,7 +64,6 @@ func setCookie(
 
 	hmac := hmac.New(sha256.New, []byte(app.config.SessionSecret))
 
-	//hmac.Write([]byte(cookie.Name))
 	hmac.Write([]byte(cookie.Value))
 	signature := hmac.Sum(nil)
 
