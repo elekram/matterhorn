@@ -40,7 +40,7 @@ func main() {
 		Certificates: []tls.Certificate{serverTLSKeys},
 	}
 
-	middlewareWrappedMux := requestLogger(secureHeaders(disableCache(app.router())))
+	middlewareWrappedMux := app.session(requestLogger(secureHeaders(disableCache(app.router()))))
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%s", config.Port),
