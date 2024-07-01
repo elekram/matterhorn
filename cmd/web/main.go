@@ -17,9 +17,8 @@ type application struct {
 }
 
 func (app *application) status(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "application:", app.config.AppName)
-	fmt.Fprintln(w, "status: online")
-	println("status ran")
+	w.Write([]byte("<!DOCTYPE html><html lang='en'><head><meta charset='UTF-8'><link rel='icon' href='data:,'></head><body>Status Finished Running</body></html>"))
+	println("status handler ran")
 }
 
 func main() {
@@ -40,7 +39,7 @@ func main() {
 		Certificates: []tls.Certificate{serverTLSKeys},
 	}
 
-	middlewareWrappedMux := app.session(requestLogger(secureHeaders(disableCache(app.router()))))
+	middlewareWrappedMux := secureHeaders(disableCache(requestLogger(app.session(app.router()))))
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%s", config.Port),
