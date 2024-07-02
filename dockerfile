@@ -1,4 +1,4 @@
-FROM golang:1.22-alpine
+FROM golang:1.22.4-alpine
 
 ENV APP_HOME /app
 
