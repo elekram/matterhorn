@@ -9,7 +9,14 @@ import (
 	"time"
 
 	environment "github.com/elekram/matterhorn/config"
+	oauth2 "golang.org/x/oauth2"
 )
+
+var Google = oauth2.Endpoint{
+	AuthURL:       "https://accounts.google.com/o/oauth2/auth",
+	TokenURL:      "https://oauth2.googleapis.com/token",
+	DeviceAuthURL: "https://oauth2.googleapis.com/device/code",
+}
 
 type application struct {
 	config environment.Config
@@ -19,6 +26,12 @@ type application struct {
 func (app *application) status(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("<!DOCTYPE html><html lang='en'><head><meta charset='UTF-8'><link rel='icon' href='data:,'></head><body>Status Finished Running</body></html>"))
 	println("status handler ran")
+}
+
+func (app *application) signout(w http.ResponseWriter, r *http.Request) {
+	println("Cookie Destroyed!")
+	w.Write([]byte("<!DOCTYPE html><html lang='en'><head><meta charset='UTF-8'><link rel='icon' href='data:,'></head><body>Signed out!</body></html>"))
+
 }
 
 func main() {

@@ -13,6 +13,7 @@ func (app *application) router() *http.ServeMux {
 
 	// mux.HandleFunc("GET /v1/status", app.status)
 	mux.HandleFunc("GET /", app.status)
+	mux.HandleFunc("GET /signout", app.signout)
 
 	mux.Handle("GET /static/", http.StripPrefix(
 		"/", http.FileServer(http.FS(content))))

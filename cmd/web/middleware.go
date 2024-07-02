@@ -11,7 +11,7 @@ func disableCache(next http.Handler) http.HandlerFunc {
 		w.Header().Set("Cache-Control", "private, no-cache, no-store, must-revalidate, proxy-revalidate")
 		w.Header().Set("Expires", "0")
 		w.Header().Set("Surrogate-Control", "max-age=0")
-		println("[ Disabling cache... ]")
+		// println("[ Disabling cache... ]")
 		next.ServeHTTP(w, r)
 	})
 }
@@ -25,7 +25,7 @@ func secureHeaders(next http.Handler) http.HandlerFunc {
 		w.Header().Set("X-Download-Options", "noopen")
 		w.Header().Set("Strict-Transport-Security", "max-age=15552000; includeSubDomains")
 
-		println("[ Securing headers... ]")
+		// println("[ Securing headers... ]")
 		next.ServeHTTP(w, r)
 	})
 }
@@ -34,7 +34,7 @@ func requestLogger(next http.Handler) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.SetOutput(os.Stdout)
 		log.Println(r.Method, r.URL)
-		println("[ Log middleware ran.. ]")
+		// println("[ Log middleware ran.. ]")
 		if r.URL.Path == "/foo" {
 			return
 		}
