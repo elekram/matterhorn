@@ -16,6 +16,7 @@ func disableCache(next http.Handler) http.HandlerFunc {
 	})
 }
 
+// Quick and dirty secure headers function
 func secureHeaders(next http.Handler) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-XSS-Protection", "1; mode=block")

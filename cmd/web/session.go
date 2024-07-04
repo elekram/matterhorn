@@ -43,12 +43,14 @@ func (app *application) session(next http.Handler) http.HandlerFunc {
 				println("Cookie not found!")
 				_ = cookie
 
-				setCookie(w, r, *app)
-				next.ServeHTTP(w, r)
+				app.signin(w, r)
+				// setCookie(w, r, app)
+				// next.ServeHTTP(w, r)
 				return
 			}
 
 			if err != http.ErrNoCookie {
+				// something went wrong page goes here
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
@@ -60,7 +62,7 @@ func (app *application) session(next http.Handler) http.HandlerFunc {
 				println("Cookie expired nom non nom!!!")
 			}
 
-			destroyCookie(w, r, *app)
+			destroyCookie(w, r, app)
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -70,7 +72,7 @@ func (app *application) session(next http.Handler) http.HandlerFunc {
 	})
 }
 
-func destroyCookie(w http.ResponseWriter, r *http.Request, app application) {
+func destroyCookie(w http.ResponseWriter, r *http.Request, app *application) {
 	println("destroiying cookie")
 	sessionName := app.config.SessionName
 
@@ -86,7 +88,7 @@ func destroyCookie(w http.ResponseWriter, r *http.Request, app application) {
 	http.SetCookie(w, &cookie)
 }
 
-func setCookie(w http.ResponseWriter, r *http.Request, app application) {
+func setCookie(w http.ResponseWriter, r *http.Request, app *application) {
 	sessions[generateSessionId(30)] = session{
 		username: "lee@cheltsec.vic.edu.au",
 		expiry:   time.Now(),
