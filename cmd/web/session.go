@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	env "github.com/elekram/matterhorn/config"
 )
 
 var (
@@ -31,19 +33,19 @@ var sessions = map[string]session{}
 // 	return s.expiry.Before(time.Now())
 // }
 
-func (app *application) session(next http.Handler) http.HandlerFunc {
+func Session(next http.Handler) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		println("[ Session middleware running... ]")
 
 		println("URL: " + r.RequestURI)
-		cookie, err := r.Cookie(app.config.SessionName)
+		cookie, err := r.Cookie(env.Config.SessionName)
 		if err != nil {
 
 			if err == http.ErrNoCookie {
 				println("Cookie not found!")
 				_ = cookie
 
-				app.signin(w, r)
+				// app.signin(w, r)
 				// setCookie(w, r, app)
 				// next.ServeHTTP(w, r)
 				return
@@ -62,7 +64,7 @@ func (app *application) session(next http.Handler) http.HandlerFunc {
 				println("Cookie expired nom non nom!!!")
 			}
 
-			destroyCookie(w, r, app)
+			destroyCookie(w, r)
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -72,9 +74,9 @@ func (app *application) session(next http.Handler) http.HandlerFunc {
 	})
 }
 
-func destroyCookie(w http.ResponseWriter, r *http.Request, app *application) {
+func destroyCookie(w http.ResponseWriter, r *http.Request) {
 	println("destroiying cookie")
-	sessionName := app.config.SessionName
+	sessionName := env.Config.SessionName
 
 	cookie := http.Cookie{
 		Name:     sessionName,
@@ -82,23 +84,23 @@ func destroyCookie(w http.ResponseWriter, r *http.Request, app *application) {
 		Path:     "/",
 		Expires:  time.Unix(0, 0),
 		HttpOnly: true,
-		Secure:   app.config.SessionSecure,
+		Secure:   env.Config.SessionSecure,
 	}
 
 	http.SetCookie(w, &cookie)
 }
 
-func setCookie(w http.ResponseWriter, r *http.Request, app *application) {
+func setCookie(w http.ResponseWriter, r *http.Request) {
 	sessions[generateSessionId(30)] = session{
 		username: "lee@cheltsec.vic.edu.au",
 		expiry:   time.Now(),
 	}
 
 	println("Setting cookie")
-	fmt.Printf(app.config.SessionName + "\n")
+	fmt.Printf(env.Config.SessionName + "\n")
 
-	sessionName := app.config.SessionName
-	maxAge, err := strconv.Atoi(app.config.SessionMaxAge)
+	sessionName := env.Config.SessionName
+	maxAge, err := strconv.Atoi(env.Config.SessionMaxAge)
 
 	if err != nil {
 		println("session cookie: maxage not a number")
@@ -110,11 +112,11 @@ func setCookie(w http.ResponseWriter, r *http.Request, app *application) {
 		Path:     "/",
 		MaxAge:   maxAge,
 		HttpOnly: true,
-		Secure:   app.config.SessionSecure,
+		Secure:   env.Config.SessionSecure,
 		SameSite: http.SameSiteLaxMode,
 	}
 
-	signedCookie := signCookie(cookie.Name, cookie.Value, app.config.SessionSecret)
+	signedCookie := signCookie(cookie.Name, cookie.Value, env.Config.SessionSecret)
 
 	encodedCookieValue := base64.URLEncoding.EncodeToString([]byte(signedCookie))
 	cookie.Value = encodedCookieValue
@@ -122,9 +124,9 @@ func setCookie(w http.ResponseWriter, r *http.Request, app *application) {
 	http.SetCookie(w, &cookie)
 }
 
-func getCookie(w http.ResponseWriter, r *http.Request, app application) {
+func getCookie(w http.ResponseWriter, r *http.Request) {
 	println("this happened!")
-	cookie, err := r.Cookie(app.config.SessionName)
+	cookie, err := r.Cookie(env.Config.SessionName)
 	if err != nil {
 		println(err)
 	}
@@ -141,8 +143,8 @@ func getCookie(w http.ResponseWriter, r *http.Request, app application) {
 	signature := signedCookieValue[:sha256.Size]
 	value := signedCookieValue[sha256.Size:]
 
-	mac := hmac.New(sha256.New, []byte(app.config.SessionSecret))
-	mac.Write([]byte(app.config.SessionName))
+	mac := hmac.New(sha256.New, []byte(env.Config.SessionSecret))
+	mac.Write([]byte(env.Config.SessionName))
 	mac.Write([]byte(value))
 	expectedSignature := mac.Sum(nil)
 
