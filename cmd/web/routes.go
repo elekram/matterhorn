@@ -3,19 +3,21 @@ package main
 import (
 	"embed"
 	"net/http"
+
+	"github.com/elekram/matterhorn/cmd/web/app"
 )
 
 //go:embed static/*
 var content embed.FS
 
-func (app *application) router() *http.ServeMux {
+func router() *http.ServeMux {
+	mux := *http.NewServeMux()
 
-	// mux.HandleFunc("GET /v1/status", app.status)
-	app.mux.HandleFunc("GET /", app.home)
-	app.mux.HandleFunc("GET /signout", app.signout)
+	mux.HandleFunc("GET /", app.Root)
+	mux.HandleFunc("GET /signin", app.SignIn)
 
-	app.mux.Handle("GET /static/", http.StripPrefix(
+	mux.Handle("GET /static/", http.StripPrefix(
 		"/", http.FileServer(http.FS(content))))
 
-	return &app.mux
+	return &mux
 }
