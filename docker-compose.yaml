@@ -15,3 +15,14 @@ services:
     # Important to bind/mount your codebase dir to /app dir for live reload
     volumes:
       - ./:/app
+  mongo:
+    image: mongo
+    ports:
+      - 27017:27017
+    environment:
+      - MONGO_INITDB_DATABASE=dev_db
+      - MONGO_INITDB_ROOT_USERNAME=sa
+      - MONGO_INITDB_ROOT_PASSWORD=secret
+    volumes:
+      - ./data/db:/data/db
+      - ./data/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
