@@ -1,4 +1,4 @@
-package env
+package appcfg
 
 import (
 	"log"
@@ -6,7 +6,7 @@ import (
 	"strconv"
 )
 
-type config struct {
+type configProperties struct {
 	AppName       string
 	DevMode       bool
 	Port          string
@@ -16,13 +16,15 @@ type config struct {
 	SessionSecret string
 	SessionSecure bool
 	SessionMaxAge string
+	MongoUsername string
+	MongoPassword string
 }
 
 var (
-	Config *config
+	Props *configProperties
 )
 
-func NewConfig() *config {
+func NewConfig() *configProperties {
 	dm := getEnv("DEV_MODE", "true")
 	devMode, err := strconv.ParseBool(dm)
 	if err != nil {
@@ -35,7 +37,7 @@ func NewConfig() *config {
 		log.Fatal("Error: parsebool failed")
 	}
 
-	config := config{
+	properties := configProperties{
 		AppName:       getEnv("APPNAME", "NoName"),
 		DevMode:       devMode,
 		Port:          getEnv("PORT", "8443"),
@@ -45,9 +47,11 @@ func NewConfig() *config {
 		SessionSecret: getEnv("SESSION_SECRET", ""),
 		SessionSecure: sessionSecure,
 		SessionMaxAge: getEnv("SESSION_MAXAGE", ""),
+		MongoUsername: getEnv("MONGO_USERNAME", ""),
+		MongoPassword: getEnv("MONGO_PASSWORD", ""),
 	}
 
-	return &config
+	return &properties
 }
 
 func getEnv(key, defaultValue string) string {
