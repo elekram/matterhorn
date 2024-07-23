@@ -1,5 +1,6 @@
 # environment files
 *.env
+/env
 
 # configuration directory
 
@@ -14,4 +15,4 @@
 
 # mongo data
 /data
-
+  
