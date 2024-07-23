@@ -28,9 +28,9 @@ func main() {
 
 	db := appcfg.Props.MongoDb
 	dbUser := appcfg.Props.MongoUsername
-	dbPassWd := appcfg.Props.MongoPassword
+	dbPassword := appcfg.Props.MongoPassword
 
-	database.DBCon = database.NewConnection(db, dbUser, dbPassWd)
+	database.DBCon = database.NewConnection(db, dbUser, dbPassword)
 
 	mux := secureHeaders(disableCache(requestLogger(router())))
 
