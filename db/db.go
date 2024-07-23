@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 
-	appcfg "github.com/elekram/matterhorn/config"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -15,7 +14,7 @@ var (
 )
 
 func NewConnection(db, dbUser, dbPassWd string) *mongo.Client {
-	uri := "mongodb://" + dbUser + ":" + dbPassWd + "@mongo/dev_db"
+	uri := "mongodb://" + dbUser + ":" + dbPassWd + "@mongo/" + db
 
 	if uri == "" {
 		log.Fatal("Set your 'MONGODB_URI' environment variable.")
