@@ -26,7 +26,11 @@ func main() {
 		Certificates: []tls.Certificate{serverTLSKeys},
 	}
 
-	database.DBCon = database.NewConnection()
+	db := appcfg.Props.MongoDb
+	dbUser := appcfg.Props.MongoUsername
+	dbPassWd := appcfg.Props.MongoPassword
+
+	database.DBCon = database.NewConnection(db, dbUser, dbPassWd)
 
 	mux := secureHeaders(disableCache(requestLogger(router())))
 

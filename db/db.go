@@ -14,8 +14,8 @@ var (
 	DBCon *mongo.Client
 )
 
-func NewConnection() *mongo.Client {
-	uri := "mongodb://" + appcfg.Props.MongoUsername + ":" + appcfg.Props.MongoPassword + "@mongo/dev_db"
+func NewConnection(db, dbUser, dbPassWd string) *mongo.Client {
+	uri := "mongodb://" + dbUser + ":" + dbPassWd + "@mongo/dev_db"
 
 	if uri == "" {
 		log.Fatal("Set your 'MONGODB_URI' environment variable.")

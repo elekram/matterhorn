@@ -16,6 +16,7 @@ type configProperties struct {
 	SessionSecret string
 	SessionSecure bool
 	SessionMaxAge string
+	MongoDb       string
 	MongoUsername string
 	MongoPassword string
 }
@@ -38,7 +39,7 @@ func NewConfig() *configProperties {
 	}
 
 	properties := configProperties{
-		AppName:       getEnv("APPNAME", "NoName"),
+		AppName:       getEnv("APPNAME", "NoAppName"),
 		DevMode:       devMode,
 		Port:          getEnv("PORT", "8443"),
 		TLSPublicKey:  getEnv("TLS_PUBLICKEY", ""),
@@ -47,6 +48,7 @@ func NewConfig() *configProperties {
 		SessionSecret: getEnv("SESSION_SECRET", ""),
 		SessionSecure: sessionSecure,
 		SessionMaxAge: getEnv("SESSION_MAXAGE", ""),
+		MongoDb:       getEnv("MONGO_DB", "dev_db"),
 		MongoUsername: getEnv("MONGO_USERNAME", ""),
 		MongoPassword: getEnv("MONGO_PASSWORD", ""),
 	}
