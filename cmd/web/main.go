@@ -8,15 +8,16 @@ import (
 	"os"
 	"time"
 
-	env "github.com/elekram/matterhorn/config"
+	appcfg "github.com/elekram/matterhorn/config"
+	database "github.com/elekram/matterhorn/db"
 )
 
 var logger = log.New(os.Stdout, "", log.Ldate|log.Ltime)
 
 func main() {
-	env.Config = env.NewConfig()
+	appcfg.Props = appcfg.NewConfig()
 
-	serverTLSKeys, err := tls.LoadX509KeyPair(env.Config.TLSPublicKey, env.Config.TLSPrivateKey)
+	serverTLSKeys, err := tls.LoadX509KeyPair(appcfg.Props.TLSPublicKey, appcfg.Props.TLSPrivateKey)
 	if err != nil {
 		logger.Fatalf("Error loading TLS public/private keys: %v", err)
 	}
@@ -25,10 +26,12 @@ func main() {
 		Certificates: []tls.Certificate{serverTLSKeys},
 	}
 
+	database.DBCon = database.NewConnection()
+
 	mux := secureHeaders(disableCache(requestLogger(router())))
 
 	srv := &http.Server{
-		Addr:         fmt.Sprintf(":%s", env.Config.Port),
+		Addr:         fmt.Sprintf(":%s", appcfg.Props.Port),
 		Handler:      mux,
 		IdleTimeout:  time.Minute,
 		TLSConfig:    tlsConfig,
@@ -38,6 +41,6 @@ func main() {
 
 	defer srv.Close()
 
-	log.Printf("Serving on port %s 💁🏻", env.Config.Port)
+	log.Printf("Serving on port %s 💁🏻", appcfg.Props.Port)
 	log.Fatal(srv.ListenAndServeTLS("", ""))
 }
