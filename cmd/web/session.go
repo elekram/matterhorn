@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	env "github.com/elekram/matterhorn/config"
+	appcfg "github.com/elekram/matterhorn/config"
 )
 
 var (
@@ -38,7 +38,7 @@ func Session(next http.Handler) http.HandlerFunc {
 		println("[ Session middleware running... ]")
 
 		println("URL: " + r.RequestURI)
-		cookie, err := r.Cookie(env.Config.SessionName)
+		cookie, err := r.Cookie(appcfg.Props.SessionName)
 		if err != nil {
 
 			if err == http.ErrNoCookie {
@@ -76,7 +76,7 @@ func Session(next http.Handler) http.HandlerFunc {
 
 func destroyCookie(w http.ResponseWriter, r *http.Request) {
 	println("destroiying cookie")
-	sessionName := env.Config.SessionName
+	sessionName := appcfg.Props.SessionName
 
 	cookie := http.Cookie{
 		Name:     sessionName,
@@ -84,7 +84,7 @@ func destroyCookie(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		Expires:  time.Unix(0, 0),
 		HttpOnly: true,
-		Secure:   env.Config.SessionSecure,
+		Secure:   appcfg.Props.SessionSecure,
 	}
 
 	http.SetCookie(w, &cookie)
@@ -97,10 +97,10 @@ func setCookie(w http.ResponseWriter, r *http.Request) {
 	}
 
 	println("Setting cookie")
-	fmt.Printf(env.Config.SessionName + "\n")
+	fmt.Printf(appcfg.Props.SessionName + "\n")
 
-	sessionName := env.Config.SessionName
-	maxAge, err := strconv.Atoi(env.Config.SessionMaxAge)
+	sessionName := appcfg.Props.SessionName
+	maxAge, err := strconv.Atoi(appcfg.Props.SessionMaxAge)
 
 	if err != nil {
 		println("session cookie: maxage not a number")
@@ -112,11 +112,11 @@ func setCookie(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		MaxAge:   maxAge,
 		HttpOnly: true,
-		Secure:   env.Config.SessionSecure,
+		Secure:   appcfg.Props.SessionSecure,
 		SameSite: http.SameSiteLaxMode,
 	}
 
-	signedCookie := signCookie(cookie.Name, cookie.Value, env.Config.SessionSecret)
+	signedCookie := signCookie(cookie.Name, cookie.Value, appcfg.Props.SessionSecret)
 
 	encodedCookieValue := base64.URLEncoding.EncodeToString([]byte(signedCookie))
 	cookie.Value = encodedCookieValue
@@ -126,7 +126,7 @@ func setCookie(w http.ResponseWriter, r *http.Request) {
 
 func getCookie(w http.ResponseWriter, r *http.Request) {
 	println("this happened!")
-	cookie, err := r.Cookie(env.Config.SessionName)
+	cookie, err := r.Cookie(appcfg.Props.SessionName)
 	if err != nil {
 		println(err)
 	}
@@ -143,8 +143,8 @@ func getCookie(w http.ResponseWriter, r *http.Request) {
 	signature := signedCookieValue[:sha256.Size]
 	value := signedCookieValue[sha256.Size:]
 
-	mac := hmac.New(sha256.New, []byte(env.Config.SessionSecret))
-	mac.Write([]byte(env.Config.SessionName))
+	mac := hmac.New(sha256.New, []byte(appcfg.Props.SessionSecret))
+	mac.Write([]byte(appcfg.Props.SessionName))
 	mac.Write([]byte(value))
 	expectedSignature := mac.Sum(nil)
 
