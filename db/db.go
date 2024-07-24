@@ -22,7 +22,7 @@ func NewConnection(db, dbUser, dbPassWd string) *mongo.Client {
 
 	DBCon, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(uri))
 	if err != nil {
-		log.Println("Error: Mongo DB Connection")
+		log.Println("Error: Mongo DB Connection Failure")
 		panic(err)
 	}
 
