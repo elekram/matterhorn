@@ -10,6 +10,7 @@ templ SignIn() {
 			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
 			<link rel="stylesheet" type="text/css" href="static/css/sign-in.css"/>
 			<link rel="stylesheet" type="text/css" href="static/css/app.css"/>
+			<script src="https://unpkg.com/htmx.org@2.0.1" defer></script>
 			<style>
     .bd-placeholder-img {
       font-size: 1.125rem;
@@ -31,14 +32,22 @@ templ SignIn() {
 				<form>
 					<h1 class="form-signin-heading">🌄_FLECK</h1>
 					<div class="form-floating">
-						<input type="email" class="form-control" id="floatingInput" placeholder="name@example.com"/>
+						<input type="email" name="email" class="form-control" id="floatingInput" placeholder="name@example.com"/>
 						<label for="floatingInput">Email address</label>
 					</div>
 					<div class="form-floating">
-						<input type="password" class="form-control" id="floatingPassword" placeholder="Password"/>
+						<input type="password" name="password" class="form-control" id="floatingPassword" placeholder="Password"/>
 						<label for="floatingPassword">Password</label>
 					</div>
-					<button class="w-100 btn btn-lg btn-primary" type="submit"><i class="bi-google"></i></button>
+					<button
+						class="w-100 btn btn-lg btn-primary"
+						hx-post="/auth"
+						hx-target="body"
+						hx-swap="outerHTML"
+						hx-replace-url="/"
+					>
+						<i class="bi-google"></i>
+					</button>
 					<p class="mt-5 mb-3 text-muted">&copy; '24/elekram</p>
 				</form>
 			</main>

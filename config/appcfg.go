@@ -6,7 +6,7 @@ import (
 	"strconv"
 )
 
-type configProperties struct {
+type ConfigProperties struct {
 	AppName       string
 	DevMode       bool
 	Port          string
@@ -21,11 +21,7 @@ type configProperties struct {
 	MongoPassword string
 }
 
-var (
-	Props *configProperties
-)
-
-func NewConfig() *configProperties {
+func NewConfig() *ConfigProperties {
 	dm := getEnv("DEV_MODE", "true")
 	devMode, err := strconv.ParseBool(dm)
 	if err != nil {
@@ -38,7 +34,7 @@ func NewConfig() *configProperties {
 		log.Fatal("Error: parsebool failed")
 	}
 
-	properties := configProperties{
+	cProps := ConfigProperties{
 		AppName:       getEnv("APPNAME", "NoAppName"),
 		DevMode:       devMode,
 		Port:          getEnv("PORT", "8443"),
@@ -53,7 +49,7 @@ func NewConfig() *configProperties {
 		MongoPassword: getEnv("MONGO_PASSWORD", ""),
 	}
 
-	return &properties
+	return &cProps
 }
 
 func getEnv(key, defaultValue string) string {

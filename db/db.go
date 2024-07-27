@@ -9,10 +9,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var (
-	DBCon *mongo.Client
-)
-
 func NewConnection(db, dbUser, dbPassWd string) *mongo.Client {
 	uri := "mongodb://" + dbUser + ":" + dbPassWd + "@mongo/" + db
 

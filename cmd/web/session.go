@@ -8,154 +8,154 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
-
-	appcfg "github.com/elekram/matterhorn/config"
 )
 
 var (
-	cookieUserValue       string = "someuser@example.com"
-	ErrValueTooLong              = errors.New("cookie value too long")
-	ErrInvalidValue              = errors.New("invalid cookie value")
-	ErrInvalidCookieValue        = errors.New("cookie failed intregity check")
+	ErrValueTooLong       = errors.New("cookie value too long")
+	ErrInvalidValue       = errors.New("invalid cookie value")
+	ErrInvalidCookieValue = errors.New("cookie failed intregity check")
 )
+
+type sessionMgr struct {
+	authenticated  bool
+	sessionName    string
+	sessiongSecret string
+	maxAge         int
+	useMemoryStore bool
+	secureSession  bool
+	memoryStore    map[string]session
+}
 
 type session struct {
 	username string
 	expiry   time.Time
 }
 
-var sessions = map[string]session{}
-
-// func (s session) isExpired() bool {
-// 	return s.expiry.Before(time.Now())
-// }
-
-func Session(next http.Handler) http.HandlerFunc {
+func (s *sessionMgr) manageSession(app *server) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		println("[ Session middleware running... ]")
+		fmt.Println("uri=" + r.RequestURI)
 
-		println("URL: " + r.RequestURI)
-		cookie, err := r.Cookie(appcfg.Props.SessionName)
-		if err != nil {
-
-			if err == http.ErrNoCookie {
-				println("Cookie not found!")
-				_ = cookie
-
-				// app.signin(w, r)
-				// setCookie(w, r, app)
-				// next.ServeHTTP(w, r)
-				return
-			}
-
-			if err != http.ErrNoCookie {
-				// something went wrong page goes here
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
+		if strings.Contains(r.RequestURI, strings.ToLower("/static")) {
+			app.router.ServeHTTP(w, r)
 		}
 
-		if strings.ToLower(r.RequestURI) == "/signout" {
-			fmt.Printf("%s", cookie.Expires)
-			if cookie.Expires.Before(time.Now()) {
-				println("Cookie expired nom non nom!!!")
-			}
-
-			destroyCookie(w, r)
-			next.ServeHTTP(w, r)
+		if !s.authenticated && r.Method == "POST" && r.RequestURI == strings.ToLower("/auth") {
+			app.handlers.handleSignIn.ServeHTTP(w, r)
 			return
 		}
 
-		fmt.Printf("Found valid cookie\n")
-		next.ServeHTTP(w, r)
+		fmt.Println("WOOOOOOOOOO!")
+
+		if !s.authenticated {
+			// app.SignIn(w, r)
+			return
+		}
+
+		if !s.cookieExists(r) {
+			s.setCookie(w, r)
+		}
 	})
 }
 
-func destroyCookie(w http.ResponseWriter, r *http.Request) {
-	println("destroiying cookie")
-	sessionName := appcfg.Props.SessionName
-
-	cookie := http.Cookie{
-		Name:     sessionName,
-		Value:    "",
-		Path:     "/",
-		Expires:  time.Unix(0, 0),
-		HttpOnly: true,
-		Secure:   appcfg.Props.SessionSecure,
+func newSession(sessionName, sessionSecret string, maxAge int, secureSession bool) *sessionMgr {
+	s := sessionMgr{
+		authenticated:  false,
+		sessionName:    sessionName,
+		sessiongSecret: sessionSecret,
+		maxAge:         maxAge,
+		secureSession:  secureSession,
+		useMemoryStore: true,
+		memoryStore:    map[string]session{},
 	}
 
-	http.SetCookie(w, &cookie)
+	return &s
 }
 
-func setCookie(w http.ResponseWriter, r *http.Request) {
-	sessions[generateSessionId(30)] = session{
-		username: "lee@cheltsec.vic.edu.au",
-		expiry:   time.Now(),
+func (s *sessionMgr) setCookie(w http.ResponseWriter, r *http.Request) {
+
+	if s.useMemoryStore {
+		fmt.Println("Browser did not send cookie")
+		fmt.Println("Create new SessionId and it to the store")
+		newSessionId := generateSessionId(30)
+
+		s.memoryStore[newSessionId] = session{
+			username: "lee@cheltsec.vic.edu.au",
+			expiry:   time.Now().Add(time.Minute),
+		}
+
+		cookie := http.Cookie{
+			Name:     s.sessionName,
+			Value:    "",
+			Path:     "/",
+			MaxAge:   s.maxAge,
+			HttpOnly: true,
+			Secure:   s.secureSession,
+			SameSite: http.SameSiteLaxMode,
+		}
+
+		signedCookie := signCookie(cookie.Name, cookie.Value, s.sessiongSecret)
+
+		encodedCookieValue := base64.URLEncoding.EncodeToString([]byte(signedCookie))
+		cookie.Value = encodedCookieValue
+
+		http.SetCookie(w, &cookie)
+
+		return
 	}
 
-	println("Setting cookie")
-	fmt.Printf(appcfg.Props.SessionName + "\n")
-
-	sessionName := appcfg.Props.SessionName
-	maxAge, err := strconv.Atoi(appcfg.Props.SessionMaxAge)
-
-	if err != nil {
-		println("session cookie: maxage not a number")
-	}
-
-	cookie := http.Cookie{
-		Name:     sessionName,
-		Value:    cookieUserValue,
-		Path:     "/",
-		MaxAge:   maxAge,
-		HttpOnly: true,
-		Secure:   appcfg.Props.SessionSecure,
-		SameSite: http.SameSiteLaxMode,
-	}
-
-	signedCookie := signCookie(cookie.Name, cookie.Value, appcfg.Props.SessionSecret)
-
-	encodedCookieValue := base64.URLEncoding.EncodeToString([]byte(signedCookie))
-	cookie.Value = encodedCookieValue
-
-	http.SetCookie(w, &cookie)
 }
 
-func getCookie(w http.ResponseWriter, r *http.Request) {
-	println("this happened!")
-	cookie, err := r.Cookie(appcfg.Props.SessionName)
+func (s *sessionMgr) cookieExists(r *http.Request) bool {
+	fmt.Println(s.sessionName)
+
+	_, err := r.Cookie(s.sessionName)
 	if err != nil {
-		println(err)
+		if err == http.ErrNoCookie {
+			fmt.Println("no cookie")
+			return false
+		}
 	}
-
-	signedCookieValue, err := base64.URLEncoding.DecodeString(cookie.Value)
-	if err != nil {
-		println(err)
-	}
-
-	if len(signedCookieValue) < sha256.Size {
-		println(ErrInvalidValue)
-	}
-
-	signature := signedCookieValue[:sha256.Size]
-	value := signedCookieValue[sha256.Size:]
-
-	mac := hmac.New(sha256.New, []byte(appcfg.Props.SessionSecret))
-	mac.Write([]byte(appcfg.Props.SessionName))
-	mac.Write([]byte(value))
-	expectedSignature := mac.Sum(nil)
-
-	if !hmac.Equal([]byte(signature), expectedSignature) {
-		println("signature mismatch")
-	} else {
-		println("signatures match!!")
-	}
-
-	w.Write([]byte(cookie.Value + " sheeeeit!"))
+	fmt.Println("cookie!!!!")
+	return true
 }
+
+// func (s *sessionMgr) getCookie(w http.ResponseWriter, r *http.Request) {
+// 	println("Get cookie")
+// 	cookie, err := r.Cookie(s.sessionName)
+// 	if err != nil {
+// 		println(err)
+// 	}
+
+// 	w.Write([]byte(cookie.Value + " no cookie"))
+// 	return
+
+// 	signedCookieValue, err := base64.URLEncoding.DecodeString(cookie.Value)
+// 	if err != nil {
+// 		println(err)
+// 	}
+
+// 	if len(signedCookieValue) < sha256.Size {
+// 		println(ErrInvalidValue)
+// 	}
+
+// 	signature := signedCookieValue[:sha256.Size]
+// 	value := signedCookieValue[sha256.Size:]
+
+// 	mac := hmac.New(sha256.New, []byte(appcfg.Props.SessionSecret))
+// 	mac.Write([]byte(appcfg.Props.SessionName))
+// 	mac.Write([]byte(value))
+// 	expectedSignature := mac.Sum(nil)
+
+// 	if !hmac.Equal([]byte(signature), expectedSignature) {
+// 		println("signature mismatch")
+// 	} else {
+// 		println("signatures match!!")
+// 	}
+
+// 	w.Write([]byte(cookie.Value + " sheeeeit!"))
+// }
 
 func signCookie(cookieName, cookieVal, sessionSecret string) string {
 	hmac := hmac.New(sha256.New, []byte(sessionSecret))
@@ -189,6 +189,22 @@ func authenticateCookie(cookieName, cookieVal, sessionSecret string) (string, er
 	}
 
 	return value, nil
+}
+
+func (s *sessionMgr) destroyCookie(w http.ResponseWriter, r *http.Request) {
+	println("destroiying cookie")
+	sessionName := s.sessionName
+
+	cookie := http.Cookie{
+		Name:     sessionName,
+		Value:    "",
+		Path:     "/",
+		Expires:  time.Unix(0, 0),
+		HttpOnly: true,
+		Secure:   s.secureSession,
+	}
+
+	http.SetCookie(w, &cookie)
 }
 
 func generateSessionId(length int) string {
