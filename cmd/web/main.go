@@ -5,14 +5,42 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	appcfg "github.com/elekram/matterhorn/config"
+	database "github.com/elekram/matterhorn/db"
+	"github.com/elekram/matterhorn/internal/bodymap"
 )
 
 func main() {
 	cfg := appcfg.NewConfig()
-	app := newAppServer(cfg)
+	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime)
+	sessionMgr := newSession(cfg.SessionName, cfg.SessionSecret, "120", true)
+	oAuth2Conf := newOAuthConfig(cfg)
+	parseForm := bodymap.ParseFormData
+
+	db := cfg.MongoDb
+	dbUser := cfg.MongoUsername
+	dbPassword := cfg.MongoPassword
+
+	dbCon := database.NewConnection(db, dbUser, dbPassword)
+
+	app := newAppServer(
+		cfg,
+		logger,
+		sessionMgr,
+		oAuth2Conf,
+		dbCon,
+		parseForm)
+
+	app.registerRouteHandlers()
+	app.registerRoutes()
+
+	handler := secureHeaders(
+		disableCache(
+			requestLogger(
+				app.session.manageSession(app))))
 
 	serverTLSKeys, err := tls.LoadX509KeyPair(app.cfg.TLSPublicKey, app.cfg.TLSPrivateKey)
 	if err != nil {
@@ -22,13 +50,6 @@ func main() {
 	tlsConfig := &tls.Config{
 		Certificates: []tls.Certificate{serverTLSKeys},
 	}
-
-	app.registerRoutes(app.router)
-
-	handler := secureHeaders(
-		disableCache(
-			requestLogger(
-				app.session.manageSession(app))))
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%s", app.cfg.Port),
