@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io"
 	"log"
 	"net/http"
 
@@ -26,7 +25,6 @@ func newAppServer(
 	sessionMgr *sessionMgr,
 	oAuth2Config *oauth2.Config,
 	dbCon database.AppDb,
-	parseForm func(io.ReadCloser) map[string]string,
 ) *app {
 
 	router := &http.ServeMux{}
