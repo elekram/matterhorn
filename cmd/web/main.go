@@ -29,8 +29,7 @@ func main() {
 		logger,
 		sessionMgr,
 		oAuth2Conf,
-		dbCon,
-		parseForm)
+		dbCon)
 
 	app.registerRouteHandlers()
 	app.registerRoutes()

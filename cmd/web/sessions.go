@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -12,13 +14,20 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/oauth2"
 )
 
 var (
 	ErrValueTooLong       = errors.New("cookie value too long")
 	ErrInvalidValue       = errors.New("invalid cookie value")
 	ErrInvalidCookieValue = errors.New("cookie failed intregity check")
+	ErrBadOAuthRequest    = errors.New("state id check failed")
 )
+
+type oAuthIdPool struct {
+	expiry time.Time
+}
 
 type sessionMgr struct {
 	sessionName    string
@@ -26,6 +35,7 @@ type sessionMgr struct {
 	maxAge         int
 	useMemoryStore bool
 	secureSession  bool
+	oAuthIdPool    map[string]oAuthIdPool
 	context        session
 	memoryStore    *memoryStore
 }
@@ -36,26 +46,36 @@ type memoryStore struct {
 }
 
 type session struct {
-	username string
-	expiry   time.Time
+	profile googleProfile
+	expiry  time.Time
+}
+
+type googleProfile struct {
+	email       string
+	name        string
+	family_name string
+	given_name  string
+	hd          string
+	id          string
+	picture     string
 }
 
 func (s *sessionMgr) manageSession(app *app) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// pass through static content
-		if strings.Contains(r.RequestURI, strings.ToLower("/static")) {
+		if strings.HasPrefix(r.RequestURI, "/static") ||
+			strings.HasPrefix(r.RequestURI, "/auth/oauth") {
 			app.router.ServeHTTP(w, r)
 			return
 		}
 
 		if s.cookieExists(r) {
-			cookieVal, err := s.getCookie(r)
+			cookieValue, err := s.getCookie(r)
 			if err != nil {
 				fmt.Println(err)
 				return
 			}
 
-			context, keyPresent := s.memoryStore.store[cookieVal]
+			context, keyPresent := s.memoryStore.store[cookieValue]
 			if !keyPresent {
 				s.destroyCookie(w)
 				app.handlers.handleSignIn.ServeHTTP(w, r)
@@ -64,46 +84,57 @@ func (s *sessionMgr) manageSession(app *app) http.HandlerFunc {
 
 			s.context = context
 
-			if time.Now().Before(s.context.expiry) {
-				fmt.Println("session active")
-				app.router.ServeHTTP(w, r)
-				return
-			}
-
 			if time.Now().After(s.context.expiry) {
 				fmt.Println("session expired")
 				s.destroyCookie(w)
 				app.handlers.handleSignIn.ServeHTTP(w, r)
 				return
 			}
+
+			fmt.Println("session active")
+			app.router.ServeHTTP(w, r)
+			return
 		}
 
 		if !s.cookieExists(r) &&
-			r.Method == "POST" &&
-			strings.ToLower(r.RequestURI) == "/auth" {
+			r.Method == "GET" &&
+			strings.HasPrefix(r.RequestURI, "/oauth2/redirect/google") {
+			stateId := r.FormValue("state")
 
-			email := strings.ToLower(r.FormValue("email"))
-			password := r.FormValue("password")
+			fmt.Println("2: " + stateId)
 
-			if email == "mark@mark.com" && password == "password" {
-				var newSessionId = generateSessionId(30)
-
-				_, ifKeyIsPresent := s.memoryStore.store[newSessionId]
-				for ifKeyIsPresent {
-					newSessionId = generateSessionId(30)
-				}
-
-				s.memoryStore.mu.Lock()
-				s.memoryStore.store[newSessionId] = session{
-					username: email,
-					expiry:   time.Now().Add(time.Second * time.Duration(s.maxAge)),
-				}
-				s.memoryStore.mu.Unlock()
-
-				s.setCookie(w, r, newSessionId)
-				app.handlers.handleHomePage.ServeHTTP(w, r)
+			_, keyPresent := s.oAuthIdPool[stateId]
+			if !keyPresent {
+				http.Error(w, ErrBadOAuthRequest.Error(), http.StatusBadRequest)
 				return
 			}
+
+			defer s.clearIdPool()
+
+			googleContext, err := HandleOAuthCallback(w, r, app.oAuth2Config)
+			if err != nil {
+				fmt.Println(err.Error())
+				return
+			}
+
+			newSessionId := s.generateId(30)
+
+			_, whileStoreHasKey := s.memoryStore.store[newSessionId]
+			for whileStoreHasKey {
+				newSessionId = s.generateId(30)
+			}
+
+			s.memoryStore.mu.Lock()
+			s.memoryStore.store[newSessionId] = session{
+				profile: googleContext,
+				expiry:  time.Now().Add(time.Second * time.Duration(s.maxAge)),
+			}
+			s.memoryStore.mu.Unlock()
+			fmt.Println(s.memoryStore.store)
+
+			s.setCookie(w, newSessionId)
+			app.handlers.handleHomePage.ServeHTTP(w, r)
+			return
 		}
 
 		if !s.cookieExists(r) {
@@ -111,6 +142,60 @@ func (s *sessionMgr) manageSession(app *app) http.HandlerFunc {
 			return
 		}
 	})
+}
+
+func HandleOAuthCallback(
+	w http.ResponseWriter,
+	r *http.Request,
+	OAuthCfg *oauth2.Config) (googleProfile, error) {
+	g := googleProfile{}
+	code := r.URL.Query().Get("code")
+
+	token, err := OAuthCfg.Exchange(context.Background(), code)
+	if err != nil {
+		return g, err
+	}
+
+	client := OAuthCfg.Client(context.Background(), token)
+
+	resp, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
+	if err != nil {
+		return g, err
+	}
+
+	defer resp.Body.Close()
+
+	var response map[string]interface{}
+
+	err = json.NewDecoder(resp.Body).Decode(&response)
+	if err != nil {
+		return g, err
+	}
+
+	g = googleProfile{
+		email:       response["email"].(string),
+		name:        response["name"].(string),
+		family_name: response["family_name"].(string),
+		given_name:  response["given_name"].(string),
+		hd:          response["hd"].(string),
+		id:          response["id"].(string),
+		picture:     response["picture"].(string),
+	}
+
+	return g, err
+}
+
+func (s *sessionMgr) clearIdPool() {
+	expiredIds := []string{}
+	for key, val := range s.oAuthIdPool {
+		if time.Now().After(val.expiry) {
+			expiredIds = append(expiredIds, key)
+		}
+	}
+
+	for _, val := range expiredIds {
+		delete(s.oAuthIdPool, val)
+	}
 }
 
 func newSession(sessionName, sessionSecret, maxAge string, secureSession bool) *sessionMgr {
@@ -130,11 +215,12 @@ func newSession(sessionName, sessionSecret, maxAge string, secureSession bool) *
 		sessiongSecret: sessionSecret,
 		maxAge:         ma,
 		secureSession:  secureSession,
+		oAuthIdPool:    map[string]oAuthIdPool{},
 		useMemoryStore: true,
 		memoryStore:    &ms,
 		context: session{
-			username: "",
-			expiry:   time.Time{},
+			profile: googleProfile{},
+			expiry:  time.Time{},
 		},
 	}
 
@@ -151,7 +237,7 @@ func (s *sessionMgr) cookieExists(r *http.Request) bool {
 	return true
 }
 
-func (s *sessionMgr) setCookie(w http.ResponseWriter, r *http.Request, sessionId string) {
+func (s *sessionMgr) setCookie(w http.ResponseWriter, sessionId string) {
 
 	if s.useMemoryStore {
 		signedValues := signCookie(s.sessionName, sessionId, s.sessiongSecret)
@@ -243,7 +329,7 @@ func (s *sessionMgr) destroyCookie(w http.ResponseWriter) {
 	http.SetCookie(w, &cookie)
 }
 
-func generateSessionId(length int) string {
+func (s *sessionMgr) generateId(length int) string {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	b := make([]byte, length+2)
 	r.Read(b)
