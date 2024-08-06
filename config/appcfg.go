@@ -10,6 +10,8 @@ type ConfigProperties struct {
 	AppName       string
 	DevMode       bool
 	Port          string
+	Domain        string
+	Host          string
 	TLSPublicKey  string
 	TLSPrivateKey string
 	SessionName   string
@@ -19,6 +21,8 @@ type ConfigProperties struct {
 	MongoDb       string
 	MongoUsername string
 	MongoPassword string
+	OAuthClientId string
+	OAuthSecret   string
 }
 
 func NewConfig() *ConfigProperties {
@@ -37,6 +41,8 @@ func NewConfig() *ConfigProperties {
 	cProps := ConfigProperties{
 		AppName:       getEnv("APPNAME", "NoAppName"),
 		DevMode:       devMode,
+		Domain:        getEnv("DOMAIN", "example.org"),
+		Host:          getEnv("HOST", "dev"),
 		Port:          getEnv("PORT", "8443"),
 		TLSPublicKey:  getEnv("TLS_PUBLICKEY", ""),
 		TLSPrivateKey: getEnv("TLS_PRIVATEKEY", ""),
@@ -47,6 +53,8 @@ func NewConfig() *ConfigProperties {
 		MongoDb:       getEnv("MONGO_DB", "dev_db"),
 		MongoUsername: getEnv("MONGO_USERNAME", ""),
 		MongoPassword: getEnv("MONGO_PASSWORD", ""),
+		OAuthClientId: getEnv("OAUTH_ClientID", ""),
+		OAuthSecret:   getEnv("OAUTH_ClientSecret", ""),
 	}
 
 	return &cProps
