@@ -9,7 +9,11 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func NewConnection(db, dbUser, dbPassWd string) *mongo.Client {
+type AppDb struct {
+	*mongo.Client
+}
+
+func NewConnection(db, dbUser, dbPassWd string) AppDb {
 	uri := "mongodb://" + dbUser + ":" + dbPassWd + "@mongo/" + db
 
 	if uri == "" {
@@ -29,5 +33,9 @@ func NewConnection(db, dbUser, dbPassWd string) *mongo.Client {
 		fmt.Println("Connected to MongoDB! 📚")
 	}
 
-	return DBCon
+	appDatabase := AppDb{
+		DBCon,
+	}
+
+	return appDatabase
 }
