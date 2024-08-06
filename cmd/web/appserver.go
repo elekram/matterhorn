@@ -7,7 +7,6 @@ import (
 
 	appcfg "github.com/elekram/matterhorn/config"
 	database "github.com/elekram/matterhorn/db"
-	"github.com/elekram/matterhorn/internal/bodymap"
 	"golang.org/x/oauth2"
 )
 
@@ -18,7 +17,6 @@ type app struct {
 	oAuth2Config *oauth2.Config
 	session      *sessionMgr
 	logger       *log.Logger
-	parseForm    bodymap.FormParser
 	handlers     *handlers
 }
 
@@ -40,7 +38,6 @@ func newAppServer(
 		session:      sessionMgr,
 		oAuth2Config: oAuth2Config,
 		logger:       logger,
-		parseForm:    parseForm,
 	}
 
 	return &a

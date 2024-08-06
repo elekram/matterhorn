@@ -10,7 +10,6 @@ import (
 
 	appcfg "github.com/elekram/matterhorn/config"
 	database "github.com/elekram/matterhorn/db"
-	"github.com/elekram/matterhorn/internal/bodymap"
 )
 
 func main() {
@@ -18,7 +17,6 @@ func main() {
 	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime)
 	sessionMgr := newSession(cfg.SessionName, cfg.SessionSecret, "120", true)
 	oAuth2Conf := newOAuthConfig(cfg)
-	parseForm := bodymap.ParseFormData
 
 	db := cfg.MongoDb
 	dbUser := cfg.MongoUsername
