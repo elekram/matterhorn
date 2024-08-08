@@ -24,6 +24,7 @@ func secureHeaders(next http.Handler) http.HandlerFunc {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-DNS-Prefetch-Control", "off")
 		w.Header().Set("X-Download-Options", "noopen")
+		// w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Strict-Transport-Security", "max-age=15552000; includeSubDomains")
 
 		// println("[ Securing headers... ]")

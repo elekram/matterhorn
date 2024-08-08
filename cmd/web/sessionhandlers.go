@@ -1,9 +1,8 @@
 package main
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
+	"html"
 	"log"
 	"net/http"
 	"text/template"
@@ -13,15 +12,21 @@ import (
 	"golang.org/x/oauth2"
 )
 
-func signIn(cfg *appcfg.ConfigProperties, failedAuth bool) http.Handler {
+func handleSignIn(cfg *appcfg.ConfigProperties) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		files := []string{
-			"./cmd/web/templates/appbase-signin.tmpl",
+			"./cmd/web/templates/_signin.tmpl",
 		}
 
 		ts := template.Must(template.ParseFiles(files...))
 
-		err := ts.Execute(w, failedAuth)
+		data := struct {
+			AppName string
+		}{
+			AppName: cfg.AppName,
+		}
+
+		err := ts.Execute(w, data)
 		if err != nil {
 			log.Println(err.Error())
 			http.Error(w, "Internal Server Error", 500)
@@ -31,55 +36,42 @@ func signIn(cfg *appcfg.ConfigProperties, failedAuth bool) http.Handler {
 
 func handleOAuth(OAuthCfg *oauth2.Config, a *app) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		stateId := a.session.generateId(30) 
-		a.session.oAuthIdPool[stateId] = oAuthIdPool{
-			expiry: time.Now().Add(time.Second * time.Duration(300)),
+		stateId := a.session.generateId(10)
+		a.session.oAuthStateParemeterPool[stateId] = oAuthStateParemeters{
+			redirectUrl: "",
+			expiresOn:   time.Now().Add(time.Second * time.Duration(300)),
 		}
-
-		fmt.Println("1: " + stateId)
 
 		url := OAuthCfg.AuthCodeURL(stateId, oauth2.AccessTypeOffline)
 		http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 	})
 }
 
-func handleOAuthCallback(OAuthCfg *oauth2.Config) http.Handler {
+func handleAppBase() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		code := r.URL.Query().Get("code")
-
-		// Exchanging the code for an access token
-		token, err := OAuthCfg.Exchange(context.Background(), code)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+		if r.URL.Path != "/" {
+			w.WriteHeader(http.StatusNotFound)
+			fmt.Fprintf(w, "404 Error: handler for %s not found", html.EscapeString(r.URL.Path))
 			return
 		}
 
-		// Creating an HTTP client to make authenticated request using the access key.
-		// This client method also regenerate the access key using the refresh key.
-		client := OAuthCfg.Client(context.Background(), token)
+		fmt.Println("test")
 
-		// Getting the user public details from google API endpoint
-		resp, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
+		files := []string{
+			"./cmd/web/templates/_app-base.tmpl",
+		}
+
+		ts, err := template.ParseFiles(files...)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			log.Println(err.Error())
+			http.Error(w, "Internal Server Error", 500)
 			return
 		}
 
-		// Closing the request body when this function returns.
-		// This is a good practice to avoid memory leak
-		defer resp.Body.Close()
-
-		var v any
-
-		// Reading the JSON body using JSON decoder
-		err = json.NewDecoder(resp.Body).Decode(&v)
+		err = ts.Execute(w, nil)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+			log.Println(err.Error())
+			http.Error(w, "Internal Server Error", 500)
 		}
-
-		// sending the user public value as a response. This is may not be a good practice,
-		// but for demonstration, I think it serves the need.
-		fmt.Fprintf(w, "%v", v)
 	})
 }

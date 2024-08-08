@@ -1,4 +1,4 @@
-package appBase
+package module
 
 import (
 	"html/template"
@@ -9,23 +9,7 @@ import (
 	database "github.com/elekram/matterhorn/db"
 )
 
-func SignIn(cfg *appcfg.ConfigProperties, failedAuth bool) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		files := []string{
-			"./cmd/web/templates/appbase-signin.tmpl",
-		}
-
-		ts := template.Must(template.ParseFiles(files...))
-
-		err := ts.Execute(w, failedAuth)
-		if err != nil {
-			log.Println(err.Error())
-			http.Error(w, "Internal Server Error", 500)
-		}
-	})
-}
-
-func Home(cfg *appcfg.ConfigProperties, db database.AppDb) http.Handler {
+func Base(cfg *appcfg.ConfigProperties, db database.AppDb) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		files := []string{
 			"./cmd/web/templates/appbase-home.tmpl",
