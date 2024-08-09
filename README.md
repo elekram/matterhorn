@@ -1,4 +1,4 @@
-# Matterhorn.
+# Matterhorn
 
 Web app pattern using vanilla Golang for the back end. This project is ready to pull and then extend. Bootstrap and HTMX 2 are integrated and ready to use. This project needs and uses Docker Compose.
 
