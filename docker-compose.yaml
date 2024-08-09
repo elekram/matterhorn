@@ -16,7 +16,6 @@ services:
     working_dir: /app
     command: >
       sh -c "go install github.com/air-verse/air@latest && 
-             go install github.com/a-h/templ/cmd/templ@latest &&
              go get go.mongodb.org/mongo-driver/mongo &&
              go get golang.org/x/oauth2 &&
              go get golang.org/x/oauth2/google &&
