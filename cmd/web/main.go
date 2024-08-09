@@ -15,7 +15,14 @@ import (
 func main() {
 	cfg := appcfg.NewConfig()
 	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime)
-	sessionMgr := newSession(cfg.SessionName, cfg.SessionSecret, "120", true)
+
+	sessionMgr := newSession(
+		cfg.SessionName,
+		cfg.SessionSecret,
+		"120",
+		true,
+		newMemoryStore())
+
 	oAuth2Conf := newOAuthConfig(cfg)
 
 	db := cfg.MongoDb

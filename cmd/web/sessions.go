@@ -26,19 +26,39 @@ var (
 	ErrRetrievingProfile  = errors.New("error retrieving profile")
 )
 
+type store interface {
+	getSession(id string) (session, bool)
+	addSession(id string, p session)
+}
+
 type sessionMgr struct {
 	sessionName             string
 	sessiongSecret          string
 	maxAge                  int
 	secureSession           bool
 	oAuthStateParemeterPool map[string]oAuthStateParemeters
-	useMemoryStore          bool
-	memoryStore             *memoryStore
+	store                   store
 }
 
-type memoryStore struct {
+type MemoryStore struct {
 	store map[string]session
 	mu    sync.Mutex
+}
+
+func (ms *MemoryStore) getSession(id string) (session, bool) {
+	s, keyPresent := ms.store[id]
+
+	if !keyPresent {
+		return session{}, false
+	}
+
+	return s, true
+}
+
+func (ms *MemoryStore) addSession(id string, s session) {
+	ms.mu.Lock()
+	ms.store[id] = s
+	ms.mu.Unlock()
 }
 
 type session struct {
@@ -61,6 +81,14 @@ type googleProfile struct {
 	picture     string
 }
 
+func newMemoryStore() store {
+	ms := MemoryStore{
+		store: map[string]session{},
+		mu:    sync.Mutex{},
+	}
+	return &ms
+}
+
 func (s *sessionMgr) manageSession(app *app) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "OPTIONS" &&
@@ -81,8 +109,8 @@ func (s *sessionMgr) manageSession(app *app) http.HandlerFunc {
 				return
 			}
 
-			context, keyPresent := s.memoryStore.store[cookieValue]
-			if !keyPresent {
+			context, hasSession := s.store.getSession(cookieValue)
+			if !hasSession {
 				s.destroyCookie(w)
 				app.handlers.handleSignIn.ServeHTTP(w, r)
 				return
@@ -117,7 +145,7 @@ func (s *sessionMgr) manageSession(app *app) http.HandlerFunc {
 			delete(s.oAuthStateParemeterPool, oAuthStateId)
 			defer s.cleanUpExpiredOAuthParameterIds()
 
-			googleContext, err := getGoogleProfile(r, app.oAuth2Config)
+			gp, err := getGoogleProfile(r, app.oAuth2Config)
 			if err != nil {
 				fmt.Println(err)
 				http.Error(w, ErrRetrievingProfile.Error(), http.StatusServiceUnavailable)
@@ -126,18 +154,12 @@ func (s *sessionMgr) manageSession(app *app) http.HandlerFunc {
 
 			newSessionId := s.generateId(30)
 
-			_, whileStoreHasKey := s.memoryStore.store[newSessionId]
-			for whileStoreHasKey {
-				newSessionId = s.generateId(30)
-			}
-
-			s.memoryStore.mu.Lock()
-			s.memoryStore.store[newSessionId] = session{
-				profile: googleContext,
+			sess := session{
+				profile: gp,
 				expiry:  time.Now().Add(time.Second * time.Duration(s.maxAge)),
 			}
-			s.memoryStore.mu.Unlock()
 
+			s.store.addSession(newSessionId, sess)
 			s.setCookie(w, newSessionId)
 
 			postSignInUrl := "/"
@@ -156,12 +178,8 @@ func newSession(
 	sessionName,
 	sessionSecret,
 	maxAge string,
-	secureSession bool) *sessionMgr {
-
-	ms := memoryStore{
-		store: map[string]session{},
-		mu:    sync.Mutex{},
-	}
+	secureSession bool,
+	store store) *sessionMgr {
 
 	ma, err := strconv.Atoi(maxAge)
 	if err != nil {
@@ -175,8 +193,7 @@ func newSession(
 		maxAge:                  ma,
 		secureSession:           secureSession,
 		oAuthStateParemeterPool: map[string]oAuthStateParemeters{},
-		useMemoryStore:          true,
-		memoryStore:             &ms,
+		store:                   store,
 	}
 
 	return &s
@@ -233,23 +250,20 @@ func (s *sessionMgr) cookieExists(r *http.Request) bool {
 }
 
 func (s *sessionMgr) setCookie(w http.ResponseWriter, sessionId string) {
-	if s.useMemoryStore {
-		signedValues := signCookie(s.sessionName, sessionId, s.sessiongSecret)
-		encodedCookieValue := base64.URLEncoding.EncodeToString([]byte(signedValues))
+	signedValues := signCookie(s.sessionName, sessionId, s.sessiongSecret)
+	encodedCookieValue := base64.URLEncoding.EncodeToString([]byte(signedValues))
 
-		cookie := http.Cookie{
-			Name:     s.sessionName,
-			Value:    encodedCookieValue,
-			Path:     "/",
-			MaxAge:   s.maxAge,
-			HttpOnly: true,
-			Secure:   s.secureSession,
-			SameSite: http.SameSiteLaxMode,
-		}
-
-		http.SetCookie(w, &cookie)
-		return
+	cookie := http.Cookie{
+		Name:     s.sessionName,
+		Value:    encodedCookieValue,
+		Path:     "/",
+		MaxAge:   s.maxAge,
+		HttpOnly: true,
+		Secure:   s.secureSession,
+		SameSite: http.SameSiteLaxMode,
 	}
+
+	http.SetCookie(w, &cookie)
 }
 
 func (s *sessionMgr) getCookie(r *http.Request) (string, error) {
