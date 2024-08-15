@@ -187,6 +187,8 @@ func newSession(
 		panic(err)
 	}
 
+	_ = newMemoryStore()
+
 	s := sessionMgr{
 		sessionName:             sessionName,
 		sessiongSecret:          sessionSecret,
