@@ -11,7 +11,7 @@ import (
 
 type app struct {
 	cfg          *appcfg.ConfigProperties
-	dbCon        database.AppDb
+	dbCon        *database.AppDb
 	router       *http.ServeMux
 	oAuth2Config *oauth2.Config
 	session      *sessionMgr
@@ -24,7 +24,7 @@ func newAppServer(
 	logger *log.Logger,
 	sessionMgr *sessionMgr,
 	oAuth2Config *oauth2.Config,
-	dbCon database.AppDb,
+	dbCon *database.AppDb,
 ) *app {
 
 	router := &http.ServeMux{}
