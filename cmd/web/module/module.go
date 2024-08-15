@@ -9,7 +9,7 @@ import (
 	database "github.com/elekram/matterhorn/db"
 )
 
-func Base(cfg *appcfg.ConfigProperties, db database.AppDb) http.Handler {
+func Base(cfg *appcfg.ConfigProperties, db *database.AppDb) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		files := []string{
 			"./cmd/web/templates/appbase-home.tmpl",
