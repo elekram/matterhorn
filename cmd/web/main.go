@@ -16,27 +16,26 @@ func main() {
 	cfg := appcfg.NewConfig()
 	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime)
 
+	appDb := database.NewConnection(
+		cfg.MongoDb,
+		cfg.MongoUsername,
+		cfg.MongoPassword)
+
 	sessionMgr := newSession(
 		cfg.SessionName,
 		cfg.SessionSecret,
 		"120",
 		true,
-		newMemoryStore())
+		newMongoStore(appDb))
 
 	oAuth2Conf := newOAuthConfig(cfg)
-
-	db := cfg.MongoDb
-	dbUser := cfg.MongoUsername
-	dbPassword := cfg.MongoPassword
-
-	dbCon := database.NewConnection(db, dbUser, dbPassword)
 
 	app := newAppServer(
 		cfg,
 		logger,
 		sessionMgr,
 		oAuth2Conf,
-		dbCon)
+		appDb)
 
 	app.registerRouteHandlers()
 	app.registerRoutes()
